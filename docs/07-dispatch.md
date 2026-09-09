@@ -1,28 +1,35 @@
-# Dispatch, Fleet & Courier
+# Delivery Control, Fleet & Dispatch Riders
 
-**Yes, dispatch gets its own dashboard.** D2R runs its own vans across five Lagos
-axes covering 2,500 VAN outlets. The logistics coordinator's job — watch a board,
-assign drops to vans, answer the phone when a shop calls — has nothing in common
-with editing a product's tax class.
+Two words that must not be confused, because D2R uses both:
+
+- **Dispatch / dispatch rider** — the person delivering. Their app lives at
+  `dispatch.drive2retail.com`.
+- **Delivery Control** — the coordinator's board inside the admin, where drops
+  are assigned to vans.
+
+D2R runs its own vans across five Lagos axes covering 2,500 VAN outlets. The
+coordinator's job — watch a board, assign drops, answer the phone when a shop
+calls — has nothing in common with editing a product's tax class, so it gets its
+own frame. The rider's app gets its own **origin**, for the reasons in §5.
 
 Three surfaces:
 
 | Surface | Who | Device | Frame |
 | --- | --- | --- | --- |
-| **Dispatch Console** | Coordinator | Desktop / wall display | Full-bleed, no admin shell |
+| **Delivery Control** | Coordinator | Desktop / wall display | Full-bleed, no admin shell |
 | **Fleet admin** | Ops manager | Desktop | Standard admin shell |
-| **Driver app** | Riders | Cheap Android, 3G | Mobile-only, offline-first |
+| **Dispatch app** | Riders | Cheap Android, 3G | Mobile-only, offline-first |
 
 ---
 
-## 1. Dispatch Console — `/dispatch`
+## 1. Delivery Control — `admin.drive2retail.com/delivery-control`
 
 Renders **without the sidebar and topbar**. Full width, auto-refreshing every
 30 seconds, designed to be left open all day and readable from across a room.
 
 ```
 ┌───────────────────────────────────────────────────────────────────────────┐
-│ ⬅ Admin   DISPATCH   Fri 12 Sep   Ikorodu ▾    ⟳ 12s    ⛶  🌙            │
+│ ⬅ Admin   DELIVERY CONTROL   Fri 12 Sep   Ikorodu ▾    ⟳ 12s    ⛶  🌙            │
 ├───────────────────────────────────────────────────────────────────────────┤
 │  Trips 6 · Stops 68 · Delivered 41 · Failed 3 · Cash due ₦6.2m           │
 ├──────────────────┬──────────────────┬──────────────────┬─────────────────┤
@@ -142,9 +149,20 @@ Tuesday delivery"* without a human deciding each time.
 
 ---
 
-## 5. Driver app — `/driver`
+## 5. Dispatch app — `dispatch.drive2retail.com`
 
 Mobile web, saved to the home screen. No app store, no installs, no update push.
+
+### Why its own origin, not a path
+
+Four technical reasons, not organisational ones:
+
+| Reason | Consequence of sharing an origin |
+| --- | --- |
+| **Service worker scope** | Offline caching is scoped by origin. A shared SW could see and cache admin routes. |
+| **Bundle isolation** | A rider on 3G would download admin JavaScript they can never use. |
+| **Auth boundary** | Rider tokens are scoped to a single trip. A separate origin means a stolen token cannot reach admin endpoints even if scoping were misconfigured. |
+| **PWA identity** | Home-screen install, icon and name belong to the rider app, not to a sub-path of the admin. |
 
 **Screens**
 
@@ -182,16 +200,43 @@ telephony provider supports it.
 
 ---
 
-## 7. Third-party couriers — `/settings/couriers` (Phase 2)
+## 7. Third-party dispatch partners — modelled now, built later
 
-For zones outside own-fleet coverage. Same `DeliveryProvider` interface as the
-own fleet, so adding one is an adapter, not a schema change.
+D2R expects to use its **own riders**, but may put some zones with an outside
+dispatch company. That possibility is modelled at launch and left unused, so
+adopting it later is a data change and an auth scope — not a migration of every
+rider and trip.
 
-Per courier: code, name, provider, credentials reference (**a secret-manager key,
-never the secret**), supported zones, COD support, rate card, active flag.
+### What exists at launch
 
-Routing: which zones use own fleet, which use a courier, and the fallback when
-own-fleet capacity is exhausted.
+- `dispatch_partner` table, empty
+- `driver.partner_id`, **nullable — null means own fleet**
+- `trip.partner_id`, nullable, denormalised for reporting
+- Every fleet screen filters on partner, defaulting to "own fleet"
+
+Nothing else changes. Own riders behave exactly as documented above.
+
+### What switching on later requires
+
+| Area | Work |
+| --- | --- |
+| Auth | Partner-scoped login; a partner sees only their own riders and trips |
+| Delivery Control | Partner column and filter; assign a zone to a partner |
+| Cash | COD reconciliation **per partner** — they collect, remit to D2R, D2R settles their fee |
+| Settlement | Partner invoices: trips delivered, rate card, deductions for variance |
+| Rider app | Same app, partner-scoped token — no separate build |
+| Reporting | Cost per drop and on-time % **by partner**, to compare against own fleet |
+
+The expensive part is partner-scoped auth and settlement. Neither is needed
+until a real partner exists, and neither requires re-modelling what is built now.
+
+### API-integrated couriers (GIG, Kwik, Sendbox) — separate case
+
+A dispatch partner uses D2R's rider app. An API courier does not — you hand them
+a shipment and poll for status. That sits behind the same `DeliveryProvider`
+interface: `courier_account` holds the code, provider, credentials reference
+(**a secret-manager key, never the secret**), supported zones, COD support and
+rate card. `shipment.carrier` and `tracking_reference` already exist for it.
 
 ---
 

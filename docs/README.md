@@ -15,12 +15,13 @@ and discarding the marketplace machinery that does not apply.
 | 3 | [04-pricing.md](04-pricing.md) | Price lists, tiers, volume breaks, scheduled changes, promotions |
 | 4 | [05-inventory.md](05-inventory.md) | Stock console, adjustments, movements, batches and expiry, stock takes, transfers |
 | 5 | [06-orders.md](06-orders.md) | Order list, order detail, fulfilment board, returns |
-| 6 | [07-dispatch.md](07-dispatch.md) | **Dedicated dispatch console**, fleet, routes, trips, live tracking, cash reconciliation |
+| 6 | [07-dispatch.md](07-dispatch.md) | **Delivery Control**, fleet, routes, trips, the dispatch rider app, cash reconciliation |
 | 7 | [08-payments-gateways.md](08-payments-gateways.md) | **Gateway registry — multiple providers, sandbox/live, routing, failover**, reconciliation, refunds, invoices |
 | 8 | [09-customers.md](09-customers.md) | Accounts, approvals, members, credit, segmentation |
 | 9 | [10-procurement.md](10-procurement.md) | Purchase orders, goods receipt, suppliers, three-way match |
 | 10 | [11-reports.md](11-reports.md) | Reporting, analytics, exports, scheduled delivery |
 | 11 | [12-settings.md](12-settings.md) | Staff and roles, delivery zones, notifications, audit, system |
+| 12 | [13-deployment.md](13-deployment.md) | Domains, origins, cross-app auth, CORS/CSP, environments, release order |
 
 Backend contracts referenced throughout live in the API repository under
 `docs/backend/`.
@@ -83,23 +84,25 @@ No screen loads all rows. No screen blocks on a chart.
 
 ---
 
-## Does dispatch get its own dashboard?
+## Two things called "dispatch"
 
-**Yes — three surfaces, not one.**
+D2R uses the word for the rider. The coordinator's screen needed a different
+name so the two are never confused.
 
-| Surface | Who | Device | Why separate |
+| Surface | Who | Where | Why |
 | --- | --- | --- | --- |
-| **Admin** (this app) | Catalogue, finance, support, sales | Desktop | General back office |
-| **Dispatch Console** | Logistics coordinator | Desktop, often a wall screen | Runs the day from one screen. Full-width board, live status, drag-and-drop assignment, no admin chrome competing for space |
-| **Driver app** | Riders | Cheap Android, patchy 3G | Offline-first, one-handed, camera for proof of delivery |
+| **Admin** (this app) | Catalogue, finance, support, sales | `admin.drive2retail.com` | General back office |
+| **Delivery Control** | Logistics coordinator | `admin.drive2retail.com/delivery-control` | Runs the day from one board. Full-bleed layout, no admin chrome — but the same app, same session, same components |
+| **Dispatch app** | Riders | **`dispatch.drive2retail.com`** | Its own origin: service worker scope, bundle isolation, trip-scoped tokens, PWA identity |
 
-The coordinator's job is nothing like the catalogue manager's. They watch a
-board, drag orders onto vans, and answer the phone when a shop calls. Wrapping
-that in a sidebar and a settings menu makes it worse.
+Delivery Control is a **layout** concern, so it stays a path. The dispatch app is
+an **origin** concern, so it does not. Reasoning in
+[13-deployment.md](13-deployment.md) §2.
 
-The Dispatch Console lives at `/dispatch` inside this app but renders **without
-the standard shell** — full-bleed, dark-capable, auto-refreshing. Same auth,
-same roles, same audit log; different frame.
+**Third-party dispatch partners** are modelled at launch and left unused — a
+nullable `partner_id` on the rider. D2R expects to use its own riders; adopting
+a partner later becomes a data change and an auth scope rather than a migration
+of every rider and trip. See [07-dispatch.md](07-dispatch.md) §7.
 
 Full specification in [07-dispatch.md](07-dispatch.md).
 
