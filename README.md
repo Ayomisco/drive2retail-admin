@@ -10,6 +10,12 @@ Next.js 15 (App Router) · React 19 · TypeScript · Tailwind v4 · ApexCharts
 > **This is the product.** Spec: `docs/backend/06-admin-ops.md` in the backend
 > repository.
 
+## Specification
+
+Full functional spec in [`docs/`](docs/) — every section, page, CRUD surface and
+workflow, including the payment gateway registry and the dedicated dispatch
+console. Start with [`docs/README.md`](docs/README.md).
+
 ## Getting started
 
 ```bash
@@ -78,6 +84,8 @@ Figures on the dashboard are placeholders whose shapes match
 API is a fetch call and a type rather than a rewrite.
 
 ## Next
+
+Build order and screen-by-screen detail are in [`docs/`](docs/). In short:
 
 1. Auth against the API, with staff MFA
 2. Generate the typed client from the backend's OpenAPI schema
